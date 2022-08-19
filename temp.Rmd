@@ -1,0 +1,234 @@
+---
+title: Multivariate Linear Regression Analysis on the Prediction of Real Estate Prices
+  in Singapore
+output:
+  pdf_document: default
+  html_document: default
+date: "2022-07-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+**Linear regression** is a statistical method in which the analyst attempts to find a relationship between two or more independent regressor variables to a dependent response variable. We assume that there is a relationship between the variables, such that the regressor variables can be used to predict the values of the response variables. In this analysis, we build a multivariate model using the dataset of real estate prices using six different regressor variables to predict real estate prices. 
+
+## I. Data
+
+The data we chosen is the real estate data (n = 414) of real estate prices in Singapore, with six different regressor variables. They are as follows: 
+
+- X1 transaction date
+
+-	X2 house age
+
+- X3 distance to the nearest major public transportation station
+
+- X4 number of convenience stores near the area of the house
+
+- X5 latitude 
+
+- X6 longitude
+
+- Y house price of unit area
+
+## II. Data Description
+
+- Real Estate Price Prediction Data Set is used to predict the price of unit area for houses given their features.
+
+- Before the analysis, we predict that X5 and X6 are not very significant regressor variables in predicting Y, because they are geographical coordinates, which do not contain any important information in predicting real estate prices. 
+
+- X1 may be a significant regressor variable, but it may contain seasonal factors on price, which may call for a Durbin-Watson test to deal with postive autocorrelation.
+
+We will show proof of the insignificance of the mentioned variables in section III. 
+
+**Source of the data:** 
+
+Real Estate Price Prediction, by Sohaila Diab. (2022). https://www.kaggle.com/code/sohailadiab/real-estate-price-prediction
+
+## III. Linear Regression
+
+As stated in the introduction, we think that variables x1, x5 and x6 are not significant due to the context of the data. However, we run a complete model below just to show the insignificance.  
+
+
+$$ y = \hat{\beta_0}+\hat{\beta_1}x_1+\hat{\beta_2}x_2+\hat{\beta_3}x_3+\hat{\beta_4}x_4+\hat{\beta_5}x_5+\hat{\beta_6}x_6 + \epsilon$$
+- As stated in the introduction, we suspect that X5 and X6 are not significant due the context of te data. However, we run a complete model of all regressor variables to get the total variation. 
+
+
+```{r}
+library(tidyverse)
+df <- read.csv("~/Desktop/Real estate data.csv")
+
+head(df)
+y <- df$Y.house.price.of.unit.area #set house price of unit area as the response variable y
+x1 <- df$X1.transaction.date
+x2 <- df$X2.house.age
+x3 <- df$X3.distance.to.the.nearest.MRT.station
+x4 <- df$X4.number.of.convenience.stores
+x5 <- df$X5.latitude
+x6 <- df$X6.longitude
+
+
+```
+
+Now let's see how effective this complete model is. 
+
+```{r}
+fit <-lm(y~x1+x2+x3+x4+x5+x6,data=df)
+summary(fit)
+```
+
+We see from the R-Squared value of 0.5824, that this isn't the best model to predict y, but from the f-statistic of 94.59, the model isn't insignificant, which leads us to believe that some of the regressor variables are indeed significant but requires us to identify and drop some of the insignificant variables. 
+
+From the t-statistic of X6, it seems that X6 may be a non-significant regressor variable. It does seem strange that X6 (logitude) would be significant while X5(latitude) isn't, let's try dropping both X5 and X6.
+
+```{r}
+fit2 <-lm(y~x1+x2+x3+x4,data=df)
+summary(fit2)
+```
+
+From the summary above, we find that the $R^2$ value only drops about 0.03 while the f-statistic jumps up significantly from 94.59 to 161.1. The regresssor variables in our model becomes more significant with a small trade in $R^2$. 
+
+
+### Least Square Estimators 
+
+With the model being $y = \hat{\beta_0}+\hat{\beta_1}x_1+\hat{\beta_2}x_2+\hat{\beta_3}x_3+\hat{\beta_4}x_4 + \epsilon$, we fit the data to the multiple linear regression model. 
+
+$$ \hat{y} = -11590+5.778x_1-0.2545x_2-0.005513x_3+1.258x_4$$
+Interpretation of the regressor variables: 
+
+- $\hat{\beta_0}$: The mean of the house price of unit area when all other regressor variables are zero, but here it is meaningless since it is negative.
+
+- $\hat{\beta_1}$,$\hat{\beta_2}$,$\hat{\beta_3}$,$\hat{\beta_4}$: The change in the mean of house price of a unit area associated with one unit increase in the $j$th regressor variables while all other regressor variables remained affixed. 
+
+### T-test of the significant of the j-th regressor variables (j=1,2,3,4):
+
+```{r}
+summary(fit2)
+```
+
+From the summary table, we see that the t values and their respective p-values at the significance level of $\alpha = 0.05$, are very small, so we are sure that each regresssor variables are individually significant in explaining the total variation.
+
+### Confidence Intervals
+
+```{r}
+confint(fit2)
+```
+
+Above are the confidence intervals for each of the regressor variables at the 95% confidence interval. At 1 unit of change for any of the regressor variable, the mean response of y changes. 
+
+If the regressor variable $\beta_j$ is greater than 1, it signifies that the mean of y changes more slowly than $x_j$, and if $\beta_j = 1$, it signifies that the mean of y changes roughly at the same rate as $x_j$. 
+### Plotting y vs. regressors
+
+```{r}
+plot(x1,y,pch=20)
+plot(x2,y,pch=20)
+plot(x3,y,pch=20)
+plot(x4,y,pch=20)
+
+```
+
+From the 4 plots, we can assume the following:
+
+- **y vs x1**: There does not seem to be a consistent pattern in when plotting price vs. Time of the year. 
+
+- **y vs. x2**: We expected a negative linear relationship for older houses, but it appears that the spread of prices appear to follow a polynomial pattern that would require higher order polynomial regression.
+
+- **y vs. x3**: Here we see a very clear negative linear relationship between price and distance to a metro station. This is most likely because houses near large cities would tend to have more metro stations than rural areas. 
+
+- **y vs. x4**: Here we see a very weak linear positive relationship between price and number of convenience stores. This could be explained by greater presence of convenience stores in large urban areas, as opposed to rural areas. 
+
+### ANOVA, F-test, Lack of Fit Test
+
+```{r}
+summary(fit2)
+anova(fit2)
+```
+
+### Sum of Squares, Mean Squares
+- $SS_{R}= 585+3441+34857+2576 = 41459$
+
+- $SS_{Res}=34003$
+
+- $SS_{Total}= 41459+34004 = 75463$
+
+- $MS_{Res} = 83$
+
+- $\sigma = \sqrt{MS_{Res}} = 9.1104$
+
+### Multiple Coefficients of Determination 
+
+- $R^2 = 0.5553$ --> $R^2$ isn't very high, but not low either. 
+
+- $\text{Adjusted } R^2 = 0.5509$
+
+### Multiple  Correlation Coefficient 
+
+- $R = \sqrt{R^2} = 0.74518$ --> If $\hat{\beta}_j$ is greater than 1, since R $\rightarrow$ 1 ,$x_j$ and $y$ are highly positively related. 
+
+- $R = - \sqrt{R^2} = -0.74518$ --> If $\hat{\beta}_j$ is less than 1, since R $\rightarrow$ -1, $x_j$ and $y$ are highly negatively related. 
+
+### F-test for the complete model 
+
+- **Implement hypothesis**:
+
+$H_0: \hat{\beta}_2 = \hat{\beta}_3  = \hat{\beta}_4  = 0$, 
+
+$H_a$: At least one of $\hat{\beta}_2, \hat{\beta}_3, \hat{\beta}_4$ are not zero, meaning that the model is significant in predicting y.
+
+- Test Statistic: F(model) = **127.7**
+
+- p value: $2.2*10^{-16} < 0$, reject $H_0$, model is significant. 
+
+### Lack of Fit test 
+
+Here we compare the full model (including x5, x6) to our reduced model (x1,x2,x3,x4) to determine the lack of fit, 
+
+```{r}
+anova(fit,fit2)
+```
+
+Full model is not adequate. 
+
+### Confidence Intervals and Prediction Intervals 
+
+```{r}
+head(predict(fit2,df,interval="confidence"))
+```
+
+Here we see the the first 6 intervals for the prediction intervals for the predicted y, and the confidence interval for the mean response y at 95% confidence. 
+
+### Variance Inflation Factor
+
+```{r}
+#install.packages(car)
+library(car)
+vif(fit2)
+```
+
+From the VIF values for x1 x2 x3 and x4, seeing as none of them are over 5, it is safe to say non of the regressors contribute too much to the standard error of the regression. 
+
+### Residual Plots
+```{r}
+plot(fit2,which=1,pch=20)
+plot(fit2,which=2,pch=20)
+plot(fit2,which=3,pch=20)
+
+
+```
+- Residual vs Fitted Graph: it appears that the residuals aren't very spread out, with a heavy concentration of smaller residuals near the right side of the graph. This is likely to violate constant variance assumption.
+
+- QQ plot: The population seems to be normally distributed. 
+
+- Scale Location: The variance of the residuals seem to fall within a certain range, matching our observation from the QQ plot.
+
+# Conclusion
+
+As seen in section 3 of the analysis, the SSR of 41459, SSRes of 34004 and SStotal of 75463, gives us an R2 score of 0.5553. It is evident that where our model is somewhat proficient in prediction of real estate prices, using the regressor variables X1: Sale date, X2: House Age, X3: Distance to a major transit system, and X4: the number of convenience stores near the unit. 
+
+Prior to our analysis, we predicted that given the three regressor variables, we would yield a much higher R2 score than our result. We estimate that this is due to the nature of real life data, where not everything can be perfectly explained through a model.
+
+Given the fact that the overall model’s f-statistic and the t-statistics of the regressor variables are very significant at the 95% confidence interval, we believe it is safe to say that our model would be a well functioning model in predicting future data sets of real estate prices. 
+
+
